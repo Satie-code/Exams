@@ -1,0 +1,48 @@
+# OS / editor files
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+*.tmp
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# IDE files
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# Flutter / Dart / Pub
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication / obfuscation
+app.*.symbols
+app.*.map.json
+
+# Android Studio build outputs
+/android/app/debug
+/android/app/profile
+/android/app/release

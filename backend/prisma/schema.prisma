@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  FACULTY
+  ADMIN
+}
+
+enum DutyRole {
+  INVIGILATOR
+  LEAD
+}
+
+enum DutyStatus {
+  CONFIRMED
+  PENDING_SWAP
+}
+
+enum DutySwapStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ActivityType {
+  BUNDLE_SCANNED
+  ATTENDANCE_MARKED
+  SUPPLIES_REQUESTED
+  WASHROOM_STARTED
+  WASHROOM_ENDED
+  SOS_REQUESTED
+  REPORT_SUBMITTED
+}
+
+enum WashroomStatus {
+  ACTIVE
+  WARNING
+  VIOLATION
+  RETURNED
+}
+
+enum SOSStatus {
+  PENDING
+  RESOLVED
+}
+
+model User {
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  password String
+  role     Role
+  student  Student?
+  faculty  Faculty?
+
+  @@map("users")
+}
+
+model Student {
+  id                 Int                 @id @default(autoincrement())
+  userId             Int                 @unique @map("user_id")
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seatingAllocations SeatingAllocation[]
+
+  @@map("students")
+}
+
+model Faculty {
+  id               Int               @id @default(autoincrement())
+  userId           Int               @unique @map("user_id")
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  duties           Duty[]
+  dutySwapRequests DutySwapRequest[] @relation("RequestedByFaculty")
+  bundleScanLogs   BundleScanLog[]
+  attendanceMarks  Attendance[]
+  supplyRequests   SupplyRequest[]
+  washroomLogs     WashroomLog[]
+  sosRequests      SOSRequest[]
+  reports          PostExamReport[]
+  activityLogs     ActivityLog[]
+
+  @@map("faculty")
+}
+
+model Exam {
+  id                 Int                 @id @default(autoincrement())
+  subject            String
+  examDate           DateTime            @map("exam_date")
+  examTime           String              @map("exam_time")
+  bundles            Bundle[]
+  seatingAllocations SeatingAllocation[]
+  duties             Duty[]
+
+  @@map("exams")
+}
+
+model SeatingAllocation {
+  studentId Int     @map("student_id")
+  examId    Int     @map("exam_id")
+  room      String
+  seat      String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam      Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, examId])
+  @@index([examId])
+  @@map("seating_allocations")
+}
+
+model Duty {
+  id                 Int               @id @default(autoincrement())
+  facultyId          Int               @map("faculty_id")
+  examId             Int               @map("exam_id")
+  room               String
+  role               DutyRole
+  status             DutyStatus        @default(CONFIRMED)
+  faculty            Faculty           @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  exam               Exam              @relation(fields: [examId], references: [id], onDelete: Cascade)
+  requesterSwapLinks DutySwapRequest[] @relation("RequesterDuty")
+  targetSwapLinks    DutySwapRequest[] @relation("TargetDuty")
+  bundleScanLogs     BundleScanLog[]
+  attendanceMarks    Attendance[]
+  supplyRequests     SupplyRequest[]
+  washroomLogs       WashroomLog[]
+  reports            PostExamReport[]
+  activityLogs       ActivityLog[]
+
+  @@index([facultyId])
+  @@index([examId])
+  @@map("duties")
+}
+
+model DutySwapRequest {
+  id                   Int            @id @default(autoincrement())
+  requesterDutyId      Int            @map("requester_duty_id")
+  targetDutyId         Int            @map("target_duty_id")
+  requestedByFacultyId Int            @map("requested_by_faculty_id")
+  status               DutySwapStatus @default(PENDING)
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+  requesterDuty        Duty           @relation("RequesterDuty", fields: [requesterDutyId], references: [id], onDelete: Cascade)
+  targetDuty           Duty           @relation("TargetDuty", fields: [targetDutyId], references: [id], onDelete: Cascade)
+  requestedByFaculty   Faculty        @relation("RequestedByFaculty", fields: [requestedByFacultyId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([requesterDutyId])
+  @@index([targetDutyId])
+  @@index([requestedByFacultyId])
+  @@map("duty_swap_requests")
+}
+
+model Bundle {
+  id        Int             @id @default(autoincrement())
+  bundleId  String          @unique @map("bundle_id")
+  examId    Int             @map("exam_id")
+  room      String
+  createdAt DateTime        @default(now()) @map("created_at")
+  exam      Exam            @relation(fields: [examId], references: [id], onDelete: Cascade)
+  scanLogs  BundleScanLog[]
+
+  @@index([examId])
+  @@index([room])
+  @@map("bundles")
+}
+
+model BundleScanLog {
+  id             Int      @id @default(autoincrement())
+  bundleRecordId Int      @map("bundle_record_id")
+  facultyId      Int      @map("faculty_id")
+  dutyId         Int      @map("duty_id")
+  scannedAt      DateTime @default(now()) @map("scanned_at")
+  bundle         Bundle   @relation(fields: [bundleRecordId], references: [id], onDelete: Cascade)
+  faculty        Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  duty           Duty     @relation(fields: [dutyId], references: [id], onDelete: Cascade)
+
+  @@index([bundleRecordId])
+  @@index([facultyId])
+  @@index([dutyId])
+  @@index([scannedAt])
+  @@map("bundle_scan_logs")
+}
+
+model Attendance {
+  id                Int      @id @default(autoincrement())
+  facultyId         Int      @map("faculty_id")
+  dutyId            Int      @map("duty_id")
+  studentIdentifier String   @map("student_identifier")
+  createdAt         DateTime @default(now()) @map("created_at")
+  faculty           Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  duty              Duty     @relation(fields: [dutyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([dutyId])
+  @@map("attendance_marks")
+}
+
+model SupplyRequest {
+  id        Int      @id @default(autoincrement())
+  facultyId Int      @map("faculty_id")
+  dutyId    Int      @map("duty_id")
+  item      String
+  quantity  Int
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  faculty   Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  duty      Duty     @relation(fields: [dutyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([dutyId])
+  @@map("supply_requests")
+}
+
+model WashroomLog {
+  id        Int            @id @default(autoincrement())
+  facultyId Int            @map("faculty_id")
+  dutyId    Int            @map("duty_id")
+  studentId String         @map("student_id")
+  startTime DateTime       @default(now()) @map("start_time")
+  endTime   DateTime?      @map("end_time")
+  status    WashroomStatus @default(ACTIVE)
+  faculty   Faculty        @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  duty      Duty           @relation(fields: [dutyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([dutyId])
+  @@index([endTime])
+  @@index([status])
+  @@map("washroom_logs")
+}
+
+model SOSRequest {
+  id        Int       @id @default(autoincrement())
+  facultyId Int       @map("faculty_id")
+  message   String
+  status    SOSStatus @default(PENDING)
+  createdAt DateTime  @default(now()) @map("created_at")
+  faculty   Faculty   @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sos_requests")
+}
+
+model PostExamReport {
+  id                         Int      @id @default(autoincrement())
+  facultyId                  Int      @map("faculty_id")
+  dutyId                     Int      @map("duty_id")
+  totalStudentsPresent       Int      @map("total_students_present")
+  totalAnswerSheetsCollected Int      @map("total_answer_sheets_collected")
+  noIncidents                Boolean  @map("no_incidents")
+  incidentDetails            String?  @map("incident_details")
+  remarks                    String?
+  declarationAccepted        Boolean  @map("declaration_accepted")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  faculty                    Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  duty                       Duty     @relation(fields: [dutyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([dutyId])
+  @@index([createdAt])
+  @@map("post_exam_reports")
+}
+
+model ActivityLog {
+  id        Int          @id @default(autoincrement())
+  facultyId Int          @map("faculty_id")
+  dutyId    Int          @map("duty_id")
+  type      ActivityType
+  message   String
+  createdAt DateTime     @default(now()) @map("created_at")
+  faculty   Faculty      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  duty      Duty         @relation(fields: [dutyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([dutyId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
