@@ -269,12 +269,27 @@ const requestDutySwap = async (req, res, next) => {
           targetDutyId,
           requestedByFacultyId: requesterDuty.facultyId
         },
-        select: {
-          id: true,
-          status: true
+        include: {
+          requesterFaculty: { select: { name: true } },
+          targetDuty: { select: { exam: { select: { subject: true } }, room: true } },
         }
       });
     });
+
+    try {
+      const { getIO } = require("../config/socket");
+      getIO().to("admin_room").emit("SWAP_REQUESTED", {
+        id: swapRequest.id,
+        status: swapRequest.status,
+        requesterFaculty: { name: swapRequest.requesterFaculty?.name || "Unknown" },
+        targetDuty: {
+          room: swapRequest.targetDuty?.room,
+          exam: { subject: swapRequest.targetDuty?.exam?.subject }
+        }
+      });
+    } catch(err) {
+      console.error("Socket emit failed from requestSwap:", err.message);
+    }
 
     return res.status(201).json({
       message: "Duty swap requested successfully",

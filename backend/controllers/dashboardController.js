@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const { getIO } = require("../config/socket");
 
 const WARNING_SECONDS = 5 * 60;
 const VIOLATION_SECONDS = 10 * 60;
@@ -11,7 +12,7 @@ const ALLOWED_SOS_MESSAGES = new Set([
 const getFacultyProfile = async (userId) =>
   prisma.faculty.findUnique({
     where: { userId },
-    select: { id: true }
+    select: { id: true, name: true }
   });
 
 const getFacultyDutyOrThrow = async (userId, dutyId) => {
@@ -161,15 +162,33 @@ const serializeWashroomLog = (log) => {
   };
 };
 
-const createActivity = async (tx, { facultyId, dutyId, type, message }) =>
-  tx.activityLog.create({
+const createActivity = async (tx, { facultyId, dutyId, type, message }) => {
+  const activity = await tx.activityLog.create({
     data: {
       facultyId,
       dutyId,
       type,
       message
+    },
+    include: {
+      faculty: { select: { name: true } }
     }
   });
+
+  try {
+    getIO().to("admin_room").emit("ACTIVITY_LOGGED", {
+      id: activity.id,
+      type: activity.type,
+      message: activity.message,
+      faculty: { name: activity.faculty?.name || "Unknown Faculty" },
+      created_at: activity.createdAt.toISOString()
+    });
+  } catch (err) {
+    console.error("Socket emit failed from createActivity:", err.message);
+  }
+
+  return activity;
+};
 
 const scanBundle = async (req, res, next) => {
   try {
@@ -368,6 +387,19 @@ const requestSOS = async (req, res, next) => {
         status: "PENDING"
       }
     });
+
+    try {
+      getIO().to("admin_room").emit("NEW_SOS", {
+        request_id: sosRequest.id,
+        faculty_name: faculty.name || "Unknown Faculty",
+        room: duty.room,
+        message: sosRequest.message,
+        status: sosRequest.status,
+        created_at: sosRequest.createdAt.toISOString()
+      });
+    } catch(err) {
+      console.error("Socket emit failed:", err.message);
+    }
 
     return res.status(201).json({
       message: "SOS request submitted",
