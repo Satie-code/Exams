@@ -304,7 +304,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${swap['requesterFaculty']?['name'] ?? 'Faculty'} requests swap in ${swap['targetDuty']?['room'] ?? 'a room'}',
+                  '${swap['requestedByFaculty']?['name'] ?? 'Faculty'} requests swap in ${swap['targetDuty']?['room'] ?? 'a room'}',
                   style: const TextStyle(
                     color: Color(0xFF111B3A),
                     fontWeight: FontWeight.bold,

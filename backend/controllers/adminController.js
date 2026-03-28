@@ -139,7 +139,7 @@ const getDashboard = async (req, res, next) => {
     const pendingSwaps = await prisma.dutySwapRequest.findMany({
       where: { status: "PENDING" },
       include: {
-        requesterFaculty: { select: { name: true } },
+        requestedByFaculty: { select: { name: true } },
         targetDuty: { select: { exam: { select: { subject: true } }, room: true } }
       }
     });
