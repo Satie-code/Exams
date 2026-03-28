@@ -25,7 +25,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _error;
 
   List<dynamic> _pendingSos = [];
-  List<dynamic> _activeWashrooms = [];
   List<dynamic> _recentActivities = [];
   List<dynamic> _pendingSwaps = [];
 
@@ -52,7 +51,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (mounted) {
         setState(() {
           _pendingSos = List.from(data['pending_sos'] ?? []);
-          _activeWashrooms = List.from(data['active_washrooms'] ?? []);
           _recentActivities = List.from(data['recent_activities'] ?? []);
           _pendingSwaps = List.from(data['pending_swaps'] ?? []);
           _isLoading = false;
@@ -128,6 +126,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _resolveSos(int requestId) async {
     try {
       await _api.resolveSOS(requestId);
+      if (!mounted) return;
       setState(() {
         _pendingSos.removeWhere((item) => item['id'] == requestId || item['request_id'] == requestId);
       });
@@ -135,6 +134,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const SnackBar(content: Text('SOS resolved.')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -144,6 +144,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _processSwap(int swapId, bool approved) async {
     try {
       await _api.approveDutySwap(swapRequestId: swapId, approved: approved);
+      if (!mounted) return;
       setState(() {
         _pendingSwaps.removeWhere((item) => item['id'] == swapId);
       });
@@ -151,6 +152,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         SnackBar(content: Text(approved ? 'Swap Approved' : 'Swap Rejected')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );

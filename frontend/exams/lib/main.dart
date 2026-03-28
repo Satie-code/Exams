@@ -193,16 +193,6 @@ class _AuthGateState extends State<_AuthGate> {
     }
   }
 
-  Future<void> _handleLogout() async {
-    await _authApi.clearSession();
-    if (mounted) {
-      setState(() {
-        _accessToken = '';
-        _userRole = '';
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {

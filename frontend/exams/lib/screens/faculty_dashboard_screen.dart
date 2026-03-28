@@ -32,7 +32,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
   late Future<FacultyDashboardActivity> _dashboardFuture;
   Timer? _ticker;
-  DateTime _now = DateTime.now();
+  final ValueNotifier<DateTime> _nowNotifier = ValueNotifier(DateTime.now());
 
   @override
   void initState() {
@@ -40,13 +40,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     _dashboardFuture = widget.api.fetchActivity(dutyId: widget.duty.dutyId);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() => _now = DateTime.now());
+      _nowNotifier.value = DateTime.now();
     });
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _nowNotifier.dispose();
     super.dispose();
   }
 
@@ -341,23 +342,23 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
   }
 
-  ({String label, String value, String helper}) _countdown() {
+  ({String label, String value, String helper}) _countdown(DateTime now) {
     final range = _range();
     if (range == null) {
       return (label: 'Exam Timer', value: '--:--:--', helper: widget.duty.time);
     }
-    if (_now.isBefore(range.start)) {
+    if (now.isBefore(range.start)) {
       return (
         label: 'Starts In',
-        value: _durationText(range.start.difference(_now)),
+        value: _durationText(range.start.difference(now)),
         helper:
             '${DateFormat('dd MMM yyyy').format(widget.duty.examDate)} - ${widget.duty.time}'
       );
     }
-    if (_now.isBefore(range.end)) {
+    if (now.isBefore(range.end)) {
       return (
         label: 'Ends In',
-        value: _durationText(range.end.difference(_now)),
+        value: _durationText(range.end.difference(now)),
         helper:
             '${DateFormat('dd MMM yyyy').format(widget.duty.examDate)} - ${widget.duty.time}'
       );
@@ -370,21 +371,21 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     );
   }
 
-  String _ago(DateTime time) {
-    final diff = _now.difference(time);
+  String _ago(DateTime time, DateTime now) {
+    final diff = now.difference(time);
     if (diff.inMinutes < 1) return 'just now';
     if (diff.inHours < 1) return '${diff.inMinutes}m ago';
     if (diff.inDays < 1) return '${diff.inHours}h ago';
     return DateFormat('dd MMM').format(time);
   }
 
-  String _liveWashroomState(WashroomLog log) {
+  String _liveWashroomState(WashroomLog log, DateTime now) {
     if (log.endTime != null) {
       return log.state;
     }
 
     final durationSeconds =
-        _now.difference(log.startTime).inSeconds.clamp(0, 24 * 60 * 60);
+        now.difference(log.startTime).inSeconds.clamp(0, 24 * 60 * 60);
 
     if (durationSeconds >= _washroomViolationSeconds) {
       return 'red';
@@ -397,8 +398,8 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     return 'green';
   }
 
-  String _sessionStatus() {
-    final countdown = _countdown();
+  String _sessionStatus(DateTime now) {
+    final countdown = _countdown(now);
     if (countdown.label == 'Starts In') {
       return 'EXAM STARTS SOON';
     }
@@ -430,7 +431,6 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final countdown = _countdown();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
@@ -469,13 +469,23 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(24, 22, 24, 120),
                     children: [
-                      _DashboardTopBar(
-                        title:
-                            '${widget.duty.courseCode} | ${widget.duty.room}',
-                        subtitle: _sessionStatus(),
+                      ValueListenableBuilder<DateTime>(
+                        valueListenable: _nowNotifier,
+                        builder: (context, now, child) {
+                          final countdown = _countdown(now);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _DashboardTopBar(
+                                title: '${widget.duty.courseCode} | ${widget.duty.room}',
+                                subtitle: _sessionStatus(now),
+                              ),
+                              const SizedBox(height: 22),
+                              _DashboardHeader(duty: widget.duty, countdown: countdown),
+                            ],
+                          );
+                        },
                       ),
-                      const SizedBox(height: 22),
-                      _DashboardHeader(duty: widget.duty, countdown: countdown),
                       const SizedBox(height: 32),
                       const _SectionHeading(
                         icon: Icons.qr_code_2_rounded,
@@ -535,7 +545,16 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                         iconColor: const Color(0xFFF09A00),
                         onTap: _showSupplySheet,
                       ),
-                      if (countdown.label == 'Exam Completed') ...[
+                      ValueListenableBuilder<DateTime>(
+                        valueListenable: _nowNotifier,
+                        builder: (context, now, child) {
+                          final count = _countdown(now);
+                          if (count.label != 'Exam Completed') {
+                            return const SizedBox.shrink();
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
                         const SizedBox(height: 14),
                         _WideActionTile(
                           icon: Icons.assignment_rounded,
@@ -549,7 +568,10 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                             maxCapacity: maxCapacity,
                           ),
                         ),
-                      ],
+                            ],
+                          );
+                        },
+                      ),
                       const SizedBox(height: 32),
                       _SectionHeaderRow(
                         title: 'WASHROOM BREAKS',
@@ -580,24 +602,29 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                           text: 'No students are currently out of the room.',
                         )
                       else
-                        ...logs.map((log) {
-                          final seconds = _now
-                              .difference(log.startTime)
-                              .inSeconds
-                              .clamp(0, 86400);
-                          final remainingSeconds =
-                              _washroomViolationSeconds - seconds;
-                          final liveState = _liveWashroomState(log);
-                          final exceeded = liveState == 'red';
-                          final color = exceeded
-                              ? const Color(0xFFFF3B30)
-                              : const Color(0xFF0BA360);
-                          final absoluteSeconds = remainingSeconds.abs();
-                          final mm = (absoluteSeconds ~/ 60)
-                              .toString()
-                              .padLeft(2, '0');
-                          final ss =
-                              (absoluteSeconds % 60).toString().padLeft(2, '0');
+                        ValueListenableBuilder<DateTime>(
+                          valueListenable: _nowNotifier,
+                          builder: (context, now, child) {
+                            return Column(
+                              children: logs.map((log) {
+                                final seconds = now
+                                    .difference(log.startTime)
+                                    .inSeconds
+                                    .clamp(0, 86400);
+                                final remainingSeconds =
+                                    _washroomViolationSeconds - seconds;
+                                final liveState = _liveWashroomState(log, now);
+                                final exceeded = liveState == 'red';
+                                final color = exceeded
+                                    ? const Color(0xFFFF3B30)
+                                    : const Color(0xFF0BA360);
+                                final absoluteSeconds = remainingSeconds.abs();
+                                final mm = (absoluteSeconds ~/ 60)
+                                    .toString()
+                                    .padLeft(2, '0');
+                                final ss = (absoluteSeconds % 60)
+                                    .toString()
+                                    .padLeft(2, '0');
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 14),
@@ -619,14 +646,24 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                               ),
                             ),
                           );
-                        }),
-                      const SizedBox(height: 32),
+                        }).toList(),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 32),
                       const _SectionHeading(
                         icon: Icons.history_rounded,
                         title: 'RECENT ACTIVITY',
                       ),
                       const SizedBox(height: 18),
-                      _ActivityPanel(activities: activities, ago: _ago),
+                      ValueListenableBuilder<DateTime>(
+                        valueListenable: _nowNotifier,
+                        builder: (context, now, child) {
+                          return _ActivityPanel(
+                              activities: activities,
+                              ago: (time) => _ago(time, now));
+                        },
+                      ),
                     ],
                   ),
                 ),
