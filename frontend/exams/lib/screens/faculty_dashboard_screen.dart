@@ -668,30 +668,16 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                   ),
                 ),
                 Positioned(
-                  right: 26,
+                  right: 24,
                   bottom: 110,
-                  child: InkWell(
-                    onTap: _openSOSSheet,
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      width: 88,
-                      height: 88,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE92822),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0x38E92822),
-                            blurRadius: 18,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.emergency_rounded,
-                        color: Colors.white,
-                        size: 38,
-                      ),
+                  child: FloatingActionButton(
+                    onPressed: _openSOSSheet,
+                    backgroundColor: const Color(0xFFE92822),
+                    elevation: 6,
+                    child: const Icon(
+                      Icons.emergency_rounded,
+                      color: Colors.white,
+                      size: 28,
                     ),
                   ),
                 ),

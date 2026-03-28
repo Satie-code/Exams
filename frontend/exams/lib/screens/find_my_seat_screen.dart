@@ -2,6 +2,8 @@ import 'package:exams_frontend/models/student_exam.dart';
 import 'package:exams_frontend/services/student_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:exams_frontend/screens/student_schedule_screen.dart';
+import 'package:exams_frontend/screens/student_profile_screen.dart';
 
 class FindMySeatScreen extends StatefulWidget {
   const FindMySeatScreen({
@@ -334,7 +336,10 @@ class _FindMySeatScreenState extends State<FindMySeatScreen> {
           },
         ),
       ),
-      bottomNavigationBar: const _StudentBottomNav(),
+      bottomNavigationBar: _StudentBottomNav(
+        accessToken: widget.accessToken,
+        apiBaseUrl: widget.apiBaseUrl,
+      ),
     );
   }
 }
@@ -770,7 +775,13 @@ class _StudentStateCard extends StatelessWidget {
 }
 
 class _StudentBottomNav extends StatelessWidget {
-  const _StudentBottomNav();
+  const _StudentBottomNav({
+    required this.accessToken,
+    required this.apiBaseUrl,
+  });
+
+  final String accessToken;
+  final String apiBaseUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -806,10 +817,30 @@ class _StudentBottomNav extends StatelessWidget {
       ],
       onTap: (index) {
         if (index == 0) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('This section is not available in the current phase.'),
+
+        Widget nextScreen;
+        switch (index) {
+          case 1:
+            nextScreen = StudentScheduleScreen(
+              accessToken: accessToken,
+              apiBaseUrl: apiBaseUrl,
+            );
+            break;
+          case 2:
+          default:
+            nextScreen = StudentProfileScreen(
+              accessToken: accessToken,
+              apiBaseUrl: apiBaseUrl,
+            );
+            break;
+        }
+
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) => nextScreen,
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
         );
       },

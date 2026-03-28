@@ -1,6 +1,9 @@
 import 'package:exams_frontend/models/faculty_duty.dart';
 import 'package:exams_frontend/screens/faculty_dashboard_screen.dart';
 import 'package:exams_frontend/services/faculty_api_service.dart';
+import 'package:exams_frontend/screens/faculty_swaps_screen.dart';
+import 'package:exams_frontend/screens/faculty_colleagues_screen.dart';
+import 'package:exams_frontend/screens/faculty_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -391,7 +394,10 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
           },
         ),
       ),
-      bottomNavigationBar: const _FacultyBottomNav(),
+      bottomNavigationBar: _FacultyBottomNav(
+        accessToken: widget.accessToken,
+        apiBaseUrl: widget.apiBaseUrl,
+      ),
     );
   }
 }
@@ -936,7 +942,13 @@ class _StateCard extends StatelessWidget {
 }
 
 class _FacultyBottomNav extends StatelessWidget {
-  const _FacultyBottomNav();
+  const _FacultyBottomNav({
+    required this.accessToken,
+    required this.apiBaseUrl,
+  });
+
+  final String accessToken;
+  final String apiBaseUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -965,14 +977,37 @@ class _FacultyBottomNav extends StatelessWidget {
         ),
       ],
       onTap: (index) {
-        if (index == 0) {
-          return;
+        if (index == 0) return;
+
+        Widget nextScreen;
+        switch (index) {
+          case 1:
+            nextScreen = FacultySwapsScreen(
+              accessToken: accessToken,
+              apiBaseUrl: apiBaseUrl,
+            );
+            break;
+          case 2:
+            nextScreen = FacultyColleaguesScreen(
+              accessToken: accessToken,
+              apiBaseUrl: apiBaseUrl,
+            );
+            break;
+          case 3:
+          default:
+            nextScreen = FacultySettingsScreen(
+              accessToken: accessToken,
+              apiBaseUrl: apiBaseUrl,
+            );
+            break;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('This section is not available in the current phase.'),
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation1, animation2) => nextScreen,
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
         );
       },

@@ -127,7 +127,6 @@ const getDashboard = async (req, res, next) => {
 
     const activeWashrooms = await prisma.washroomLog.findMany({
       where: { endTime: null },
-      include: { student: { select: { id: true, name: true, rollNumber: true } } },
       orderBy: { startTime: "desc" }
     });
 
