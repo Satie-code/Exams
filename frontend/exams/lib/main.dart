@@ -109,17 +109,47 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
-  late String _accessToken;
-  late String _userRole;
+  String? _accessToken;
+  String? _userRole;
+  bool _isLoading = true;
+  late final AuthApiService _authApi;
 
   @override
   void initState() {
     super.initState();
-    _accessToken = widget.initialAccessToken.trim();
-    _userRole = _resolvedRole(
-      explicitRole: widget.initialUserRole,
-      accessToken: _accessToken,
-    );
+    _authApi = AuthApiService(baseUrl: widget.apiBaseUrl);
+    _initSession();
+  }
+
+  Future<void> _initSession() async {
+    final envToken = widget.initialAccessToken.trim();
+    if (envToken.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _accessToken = envToken;
+          _userRole = _resolvedRole(
+            explicitRole: widget.initialUserRole,
+            accessToken: envToken,
+          );
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    final session = await _authApi.loadSession();
+    if (mounted) {
+      setState(() {
+        if (session != null) {
+          _accessToken = session.accessToken;
+          _userRole = session.role.trim().toUpperCase();
+        } else {
+          _accessToken = '';
+          _userRole = '';
+        }
+        _isLoading = false;
+      });
+    }
   }
 
   String _resolvedRole({
@@ -152,23 +182,44 @@ class _AuthGateState extends State<_AuthGate> {
     }
   }
 
-  void _handleLogin(AuthSession session) {
-    setState(() {
-      _accessToken = session.accessToken;
-      _userRole = session.role.trim().toUpperCase();
-    });
+  Future<void> _handleLogin(AuthSession session) async {
+    await _authApi.saveSession(session);
+    if (mounted) {
+      setState(() {
+        _accessToken = session.accessToken;
+        _userRole = session.role.trim().toUpperCase();
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    await _authApi.clearSession();
+    if (mounted) {
+      setState(() {
+        _accessToken = '';
+        _userRole = '';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_accessToken.isEmpty) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_accessToken?.isEmpty ?? true) {
       return LoginScreen(
         apiBaseUrl: widget.apiBaseUrl,
         onLogin: _handleLogin,
       );
     }
 
-    if (_userRole.isEmpty) {
+    if (_userRole?.isEmpty ?? true) {
       return LoginScreen(
         apiBaseUrl: widget.apiBaseUrl,
         onLogin: _handleLogin,
@@ -177,20 +228,20 @@ class _AuthGateState extends State<_AuthGate> {
 
     if (_userRole == 'FACULTY') {
       return FacultyDutiesScreen(
-        accessToken: _accessToken,
+        accessToken: _accessToken ?? '',
         apiBaseUrl: widget.apiBaseUrl,
       );
     }
 
     if (_userRole == 'STUDENT') {
       return FindMySeatScreen(
-        accessToken: _accessToken,
+        accessToken: _accessToken ?? '',
         apiBaseUrl: widget.apiBaseUrl,
       );
     }
 
     return _UnsupportedRoleScreen(
-      role: _userRole.isEmpty ? 'UNKNOWN' : _userRole,
+      role: (_userRole?.isEmpty ?? true) ? 'UNKNOWN' : _userRole!,
     );
   }
 }
