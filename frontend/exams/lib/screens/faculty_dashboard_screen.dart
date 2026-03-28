@@ -5,6 +5,7 @@ import 'package:exams_frontend/models/faculty_dashboard_activity.dart';
 import 'package:exams_frontend/models/faculty_duty.dart';
 import 'package:exams_frontend/models/washroom_log.dart';
 import 'package:exams_frontend/screens/post_exam_report_screen.dart';
+import 'package:exams_frontend/screens/qr_scanner_screen.dart';
 import 'package:exams_frontend/services/faculty_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -407,6 +408,26 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     return 'EXAM IN PROGRESS';
   }
 
+  Future<void> _openQRScanner({
+    required String title,
+    required String subtitle,
+    required Future<void> Function(String value) onSubmit,
+    required String successMessage,
+  }) async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => QRScannerScreen(
+          title: title,
+          subtitle: subtitle,
+        ),
+      ),
+    );
+
+    if (result != null && result.isNotEmpty && mounted) {
+      await _runAction(() => onSubmit(result), successMessage);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final countdown = _countdown();
@@ -416,17 +437,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
       extendBody: true,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showSingleInputSheet(
-          title: 'Scan Materials',
-          label: 'Bundle ID',
-          actionLabel: 'Confirm Scan',
-          onSubmit: (value) => _runAction(
-            () => widget.api.scanBundle(
-              dutyId: widget.duty.dutyId,
-              bundleId: value,
-            ),
-            'Bundle scanned successfully.',
+        onPressed: () => _openQRScanner(
+          title: 'Scan Exam Bundle',
+          subtitle: 'Point the camera at the bundle manifest QR code.',
+          onSubmit: (value) => widget.api.scanBundle(
+            dutyId: widget.duty.dutyId,
+            bundleId: value,
           ),
+          successMessage: 'Bundle verified and logged successfully.',
         ),
         backgroundColor: const Color(0xFF4560BD),
         shape: const CircleBorder(),
@@ -470,17 +488,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                             child: _ActionTile(
                               icon: Icons.inventory_2_rounded,
                               title: 'Scan Materials',
-                              onTap: () => _showSingleInputSheet(
-                                title: 'Scan Materials',
-                                label: 'Bundle ID',
-                                actionLabel: 'Confirm Scan',
-                                onSubmit: (value) => _runAction(
-                                  () => widget.api.scanBundle(
-                                    dutyId: widget.duty.dutyId,
-                                    bundleId: value,
-                                  ),
-                                  'Bundle scanned successfully.',
+                              onTap: () => _openQRScanner(
+                                title: 'Scan Exam Bundle',
+                                subtitle: 'Point the camera at the bundle manifest QR code.',
+                                onSubmit: (value) => widget.api.scanBundle(
+                                  dutyId: widget.duty.dutyId,
+                                  bundleId: value,
                                 ),
+                                successMessage: 'Bundle verified and logged successfully.',
                               ),
                             ),
                           ),
@@ -489,17 +504,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                             child: _ActionTile(
                               icon: Icons.person_search_rounded,
                               title: 'Scan Students',
-                              onTap: () => _showSingleInputSheet(
-                                title: 'Scan Students',
-                                label: 'Student ID / register number',
-                                actionLabel: 'Mark Present',
-                                onSubmit: (value) => _runAction(
-                                  () => widget.api.markAttendance(
-                                    dutyId: widget.duty.dutyId,
-                                    studentIdentifier: value,
-                                  ),
-                                  'Attendance marked successfully.',
+                              onTap: () => _openQRScanner(
+                                title: 'Scan Student ID',
+                                subtitle: 'Verify identity and mark attendance via student ID.',
+                                onSubmit: (value) => widget.api.markAttendance(
+                                  dutyId: widget.duty.dutyId,
+                                  studentIdentifier: value,
                                 ),
+                                successMessage: 'Student attendance marked.',
                               ),
                             ),
                           ),
