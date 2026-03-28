@@ -52,9 +52,10 @@ const register = async (req, res, next) => {
       });
     }
 
-    if (password.length < 6) {
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
       return res.status(400).json({
-        message: "Password must be at least 6 characters long"
+        message: "Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character."
       });
     }
 

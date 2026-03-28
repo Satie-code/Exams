@@ -1,6 +1,14 @@
 require("dotenv").config();
 
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET environment variable is not set.");
+  process.exit(1);
+}
+
 const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const activityRoutes = require("./routes/activityRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -15,6 +23,20 @@ const supplyRoutes = require("./routes/supplyRoutes");
 const washroomRoutes = require("./routes/washroomRoutes");
 
 const app = express();
+
+// Security Middleware
+app.use(helmet());
+app.use(cors());
+
+// Global Rate Limiting
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // limit each IP to 200 requests per windowMs
+  message: { message: "Too many requests from this IP, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use(globalLimiter);
 
 app.use(express.json());
 
