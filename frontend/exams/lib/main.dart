@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:exams_frontend/screens/admin_dashboard_screen.dart';
 import 'package:exams_frontend/screens/faculty_duties_screen.dart';
 import 'package:exams_frontend/screens/find_my_seat_screen.dart';
 import 'package:exams_frontend/screens/login_screen.dart';
@@ -235,6 +236,13 @@ class _AuthGateState extends State<_AuthGate> {
 
     if (_userRole == 'STUDENT') {
       return FindMySeatScreen(
+        accessToken: _accessToken ?? '',
+        apiBaseUrl: widget.apiBaseUrl,
+      );
+    }
+
+    if (_userRole == 'ADMIN') {
+      return AdminDashboardScreen(
         accessToken: _accessToken ?? '',
         apiBaseUrl: widget.apiBaseUrl,
       );
