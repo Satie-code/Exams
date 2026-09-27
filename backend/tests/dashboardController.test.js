@@ -152,6 +152,13 @@ describe("dashboardController", () => {
         dutyId: 8,
         type: "BUNDLE_SCANNED",
         message: "Bundle BND-200 scanned for Physics in room A-101"
+      },
+      include: {
+        faculty: {
+          select: {
+            name: true
+          }
+        }
       }
     });
     expect(res.status).toHaveBeenCalledWith(201);

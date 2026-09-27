@@ -1,11 +1,11 @@
 import 'package:exams_frontend/models/faculty_duty.dart';
 import 'package:exams_frontend/screens/faculty_dashboard_screen.dart';
 import 'package:exams_frontend/services/faculty_api_service.dart';
-import 'package:exams_frontend/screens/faculty_swaps_screen.dart';
-import 'package:exams_frontend/screens/faculty_colleagues_screen.dart';
-import 'package:exams_frontend/screens/faculty_settings_screen.dart';
+import 'package:exams_frontend/widgets/duties/duty_bottom_nav.dart';
+import 'package:exams_frontend/widgets/duties/duty_card.dart';
+import 'package:exams_frontend/widgets/duties/duty_swap_sheet.dart';
+import 'package:exams_frontend/widgets/duties/duty_top_tabs.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class FacultyDutiesScreen extends StatefulWidget {
   const FacultyDutiesScreen({
@@ -98,9 +98,13 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
                         : filter == 'CONFIRMED'
                             ? 'Confirmed only'
                             : 'Pending agreement only',
-                    style: const TextStyle(
-                      color: Color(0xFF4A5A78),
-                      fontWeight: FontWeight.w600,
+                    style: TextStyle(
+                      color: _statusFilter == filter
+                          ? const Color(0xFF3157C8)
+                          : const Color(0xFF111B3A),
+                      fontWeight: _statusFilter == filter
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                     ),
                   ),
                   trailing: _statusFilter == filter
@@ -146,7 +150,7 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (context) => _SwapOptionsSheet(
+        builder: (context) => SwapOptionsSheet(
           duty: duty,
           loader: () => _api.fetchSwapOptions(duty.dutyId),
         ),
@@ -260,7 +264,7 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: _TopTab(
+                  child: TopTab(
                     title: 'Upcoming Duties',
                     isSelected: _selectedTabIndex == 0,
                     onTap: () {
@@ -271,7 +275,7 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
                   ),
                 ),
                 Expanded(
-                  child: _TopTab(
+                  child: TopTab(
                     title: 'Duty History',
                     isSelected: _selectedTabIndex == 1,
                     onTap: () {
@@ -295,7 +299,7 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
             }
 
             if (snapshot.hasError) {
-              return _StateCard(
+              return StateCard(
                 title: 'Unable to load duties',
                 subtitle:
                     snapshot.error.toString().replaceFirst('Exception: ', ''),
@@ -365,7 +369,7 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
                   ),
                   const SizedBox(height: 22),
                   if (duties.isEmpty)
-                    _StateCard(
+                    StateCard(
                       title: _selectedTabIndex == 0
                           ? 'No upcoming duties'
                           : 'No duty history yet',
@@ -378,7 +382,7 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
                     ...duties.map(
                       (duty) => Padding(
                         padding: const EdgeInsets.only(bottom: 24),
-                        child: _DutyCard(
+                        child: DutyCard(
                           duty: duty,
                           isHistory: _selectedTabIndex == 1,
                           onOpen: () => _openDashboard(duty),
@@ -394,623 +398,10 @@ class _FacultyDutiesScreenState extends State<FacultyDutiesScreen> {
           },
         ),
       ),
-      bottomNavigationBar: _FacultyBottomNav(
+      bottomNavigationBar: FacultyBottomNav(
         accessToken: widget.accessToken,
         apiBaseUrl: widget.apiBaseUrl,
       ),
-    );
-  }
-}
-
-class _TopTab extends StatelessWidget {
-  const _TopTab({
-    required this.title,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String title;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        height: 72,
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isSelected ? const Color(0xFF3157C8) : Colors.transparent,
-              width: 3,
-            ),
-          ),
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: TextStyle(
-              color: isSelected
-                  ? const Color(0xFF3157C8)
-                  : const Color(0xFF75859C),
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DutyCard extends StatelessWidget {
-  const _DutyCard({
-    required this.duty,
-    required this.isHistory,
-    required this.onOpen,
-    required this.onSwap,
-  });
-
-  final FacultyDuty duty;
-  final bool isHistory;
-  final VoidCallback onOpen;
-  final VoidCallback? onSwap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isConfirmed = duty.status.toUpperCase() == 'CONFIRMED';
-    final bool isPendingAgreement = !isConfirmed && !isHistory;
-    final badgeBackground =
-        isConfirmed ? const Color(0xFFDDF8E4) : const Color(0xFFEAEFFD);
-    final badgeForeground =
-        isConfirmed ? const Color(0xFF1A9A49) : const Color(0xFF3157C8);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFD8E1F0), width: 1.4),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A12284A),
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(22)),
-              onTap: onOpen,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: badgeBackground,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            duty.statusLabel.toUpperCase(),
-                            style: TextStyle(
-                              color: badgeForeground,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          duty.roleLabel,
-                          style: const TextStyle(
-                            color: Color(0xFF97A5BE),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      duty.subject,
-                      style: const TextStyle(
-                        color: Color(0xFF111B3A),
-                        fontSize: 20,
-                        height: 1.3,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    _MetaRow(
-                      icon: Icons.calendar_today_outlined,
-                      text:
-                          DateFormat('EEE, MMM d, yyyy').format(duty.examDate),
-                    ),
-                    const SizedBox(height: 12),
-                    _MetaRow(
-                      icon: Icons.access_time_filled_rounded,
-                      text: duty.time,
-                    ),
-                    const SizedBox(height: 12),
-                    _MetaRow(
-                      icon: Icons.location_on_rounded,
-                      text: duty.room,
-                    ),
-                    if (isPendingAgreement) ...[
-                      const SizedBox(height: 18),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F7FC),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: const Color(0xFFD1DAE9),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.person_outline_rounded,
-                                color: Color(0xFF7D8DA7),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Swap requested with',
-                                    style: TextStyle(
-                                      color: Color(0xFF74839A),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Faculty coordination desk',
-                                    style: TextStyle(
-                                      color: Color(0xFF3157C8),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(
-                              Icons.hourglass_empty_rounded,
-                              color: Color(0xFF3157C8),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF9FBFF),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (isHistory)
-                  const Text(
-                    'Completed',
-                    style: TextStyle(
-                      color: Color(0xFF8A97AE),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  )
-                else if (isPendingAgreement)
-                  OutlinedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Swap cancellation is not available in the current phase.',
-                          ),
-                        ),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF55657F),
-                      side: const BorderSide(color: Color(0xFFD1DAE9)),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text(
-                      'Cancel Request',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  )
-                else
-                  ElevatedButton.icon(
-                    onPressed: onSwap,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: onSwap != null
-                          ? const Color(0xFF3157C8)
-                          : Colors.white,
-                      foregroundColor: onSwap != null
-                          ? Colors.white
-                          : const Color(0xFF55657F),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(
-                          color: onSwap != null
-                              ? const Color(0xFF3157C8)
-                              : const Color(0xFFD1DAE9),
-                        ),
-                      ),
-                    ),
-                    icon: Icon(
-                      onSwap != null
-                          ? Icons.swap_horiz_rounded
-                          : Icons.hourglass_empty_rounded,
-                      size: 18,
-                    ),
-                    label: Text(
-                      onSwap != null ? 'Request Swap' : 'Pending Approval',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({
-    required this.icon,
-    required this.text,
-  });
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 21, color: const Color(0xFF4B5B75)),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Color(0xFF34445E),
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SwapOptionsSheet extends StatelessWidget {
-  const _SwapOptionsSheet({
-    required this.duty,
-    required this.loader,
-  });
-
-  final FacultyDuty duty;
-  final Future<List<FacultyDuty>> Function() loader;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.72,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF7F9FE),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 18, 22, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Select Swap Duty',
-                  style: TextStyle(
-                    color: Color(0xFF111B3A),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Choose another confirmed duty for ${duty.courseCode}.',
-                  style: const TextStyle(
-                    color: Color(0xFF74839A),
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: FutureBuilder<List<FacultyDuty>>(
-              future: loader(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        snapshot.error
-                            .toString()
-                            .replaceFirst('Exception: ', ''),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF74839A),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final options = snapshot.data ?? const <FacultyDuty>[];
-
-                if (options.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text(
-                        'No confirmed duties are currently available for swap.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Color(0xFF74839A),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                  itemCount: options.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final option = options[index];
-
-                    return Card(
-                      child: ListTile(
-                        onTap: () => Navigator.of(context).pop(option),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 10,
-                        ),
-                        title: Text(
-                          option.subject,
-                          style: const TextStyle(
-                            color: Color(0xFF111B3A),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            '${DateFormat('EEE, MMM d, yyyy').format(option.examDate)}\n${option.time}  |  ${option.room}',
-                            style: const TextStyle(
-                              color: Color(0xFF74839A),
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                        trailing: const Icon(
-                          Icons.chevron_right_rounded,
-                          color: Color(0xFF3157C8),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StateCard extends StatelessWidget {
-  const _StateCard({
-    required this.title,
-    required this.subtitle,
-    required this.actionLabel,
-    required this.onPressed,
-  });
-
-  final String title;
-  final String subtitle;
-  final String actionLabel;
-  final Future<void> Function() onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 48),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xFF111B3A),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF74839A),
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        onPressed();
-                      },
-                      child: Text(actionLabel),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FacultyBottomNav extends StatelessWidget {
-  const _FacultyBottomNav({
-    required this.accessToken,
-    required this.apiBaseUrl,
-  });
-
-  final String accessToken;
-  final String apiBaseUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: 0,
-      selectedItemColor: const Color(0xFF3157C8),
-      unselectedItemColor: const Color(0xFF97A5BE),
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_month_rounded),
-          label: 'Schedule',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.swap_horiz_rounded),
-          label: 'My Swaps',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.groups_rounded),
-          label: 'Colleagues',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings_rounded),
-          label: 'Settings',
-        ),
-      ],
-      onTap: (index) {
-        if (index == 0) return;
-
-        Widget nextScreen;
-        switch (index) {
-          case 1:
-            nextScreen = FacultySwapsScreen(
-              accessToken: accessToken,
-              apiBaseUrl: apiBaseUrl,
-            );
-            break;
-          case 2:
-            nextScreen = FacultyColleaguesScreen(
-              accessToken: accessToken,
-              apiBaseUrl: apiBaseUrl,
-            );
-            break;
-          case 3:
-          default:
-            nextScreen = FacultySettingsScreen(
-              accessToken: accessToken,
-              apiBaseUrl: apiBaseUrl,
-            );
-            break;
-        }
-
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation1, animation2) => nextScreen,
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      },
     );
   }
 }

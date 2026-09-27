@@ -13,26 +13,26 @@ Production-focused exam operations system with:
 
 ```powershell
 cd backend
-cmd /c npm.cmd install
+npm install
 ```
 
-3. Run Prisma generate and migrations:
+3. Run Prisma generate and push database schema:
 
 ```powershell
-cmd /c npx prisma generate
-cmd /c npx prisma migrate dev
+npm run prisma:generate
+npm run prisma:push
 ```
 
 4. Seed demo data:
 
 ```powershell
-cmd /c npm.cmd run prisma:seed
+npm run prisma:seed
 ```
 
 5. Start the backend:
 
 ```powershell
-cmd /c npm.cmd start
+npm start
 ```
 
 The backend runs on `http://localhost:5000` by default.

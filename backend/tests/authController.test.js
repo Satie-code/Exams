@@ -32,7 +32,7 @@ describe("authController.register", () => {
     const req = {
       body: {
         email: "faculty@exams.com",
-        password: "secret123",
+        password: "Secret@123!",
         role: "FACULTY"
       }
     };

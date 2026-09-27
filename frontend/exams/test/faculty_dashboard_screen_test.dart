@@ -170,10 +170,12 @@ void main() {
     await tester.tap(find.text('Scan Materials'));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Enter Manually Instead'));
+    await tester.pumpAndSettle();
+
     await tester.enterText(find.byType(TextField).last, 'BND-100');
-    await tester.tap(find.text('Confirm Scan'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
 
     final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
     expect(find.text('Bundle scanned successfully.'), findsOneWidget);
@@ -194,10 +196,12 @@ void main() {
     await tester.tap(find.text('Scan Materials'));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Enter Manually Instead'));
+    await tester.pumpAndSettle();
+
     await tester.enterText(find.byType(TextField).last, 'BND-999');
-    await tester.tap(find.text('Confirm Scan'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
 
     final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
     expect(find.text('Wrong room for this bundle'), findsOneWidget);
@@ -216,6 +220,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Student ID: STU-42'),
+      200.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+
     expect(find.text('Student ID: STU-42'), findsOneWidget);
     expect(find.textContaining('Started'), findsOneWidget);
     expect(find.text('REMAINING'), findsOneWidget);
@@ -232,9 +242,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('2 Pending'),
+      200.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+
     expect(find.text('2 Pending'), findsOneWidget);
 
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byIcon(Icons.emergency_rounded));
     await tester.pumpAndSettle();
 
     expect(find.text('Answer Sheets'), findsOneWidget);
@@ -243,6 +259,10 @@ void main() {
   });
 
   testWidgets('shows post-exam report action on the dashboard', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(
       MaterialApp(
         home: FacultyDashboardScreen(
@@ -253,6 +273,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Post-Exam Report'), findsOneWidget);
+    expect(find.text('Submit Post-Exam Report'), findsOneWidget);
   });
 }

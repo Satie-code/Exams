@@ -1,12 +1,17 @@
 import 'dart:async';
 
-import 'package:exams_frontend/models/faculty_activity.dart';
 import 'package:exams_frontend/models/faculty_dashboard_activity.dart';
 import 'package:exams_frontend/models/faculty_duty.dart';
 import 'package:exams_frontend/models/washroom_log.dart';
 import 'package:exams_frontend/screens/post_exam_report_screen.dart';
 import 'package:exams_frontend/screens/qr_scanner_screen.dart';
 import 'package:exams_frontend/services/faculty_api_service.dart';
+import 'package:exams_frontend/widgets/faculty/faculty_action_tiles.dart';
+import 'package:exams_frontend/widgets/faculty/faculty_activity_panel.dart';
+import 'package:exams_frontend/widgets/faculty/faculty_bottom_nav.dart';
+import 'package:exams_frontend/widgets/faculty/faculty_dashboard_header.dart';
+import 'package:exams_frontend/widgets/faculty/faculty_sos_sheet.dart';
+import 'package:exams_frontend/widgets/faculty/faculty_washroom_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -110,17 +115,22 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF111B3A),
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
-              autofocus: true,
               decoration: InputDecoration(
                 labelText: label,
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -133,6 +143,13 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                   Navigator.of(context).pop();
                   await onSubmit(value);
                 },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4560BD),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
                 child: Text(actionLabel),
               ),
             ),
@@ -144,7 +161,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
   Future<void> _showSupplySheet() async {
     final itemController = TextEditingController();
-    final quantityController = TextEditingController(text: '1');
+    final quantityController = TextEditingController();
     final noteController = TextEditingController();
 
     await showModalBottomSheet<void>(
@@ -259,7 +276,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _SOSOptionTile(
+              SOSOptionTile(
                 title: 'Answer Sheets',
                 onTap: () async {
                   Navigator.of(context).pop();
@@ -270,7 +287,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 },
               ),
               const SizedBox(height: 10),
-              _SOSOptionTile(
+              SOSOptionTile(
                 title: 'Stationery',
                 onTap: () async {
                   Navigator.of(context).pop();
@@ -281,7 +298,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 },
               ),
               const SizedBox(height: 10),
-              _SOSOptionTile(
+              SOSOptionTile(
                 title: 'Urgent Help',
                 isUrgent: true,
                 onTap: () async {
@@ -319,7 +336,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     }
   }
 
-  _TimeRange? _range() {
+  ({DateTime start, DateTime end})? _range() {
     try {
       final pieces = widget.duty.time.split('-').map((e) => e.trim()).toList();
       final day = DateFormat('yyyy-MM-dd').format(widget.duty.examDate);
@@ -328,7 +345,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
       final end = pieces.length > 1
           ? parser.parse('$day ${pieces.last}')
           : start.add(const Duration(hours: 3));
-      return _TimeRange(start, end);
+      return (start: start, end: end);
     } catch (_) {
       return null;
     }
@@ -431,12 +448,12 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
       extendBody: true,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
+        heroTag: 'dashboard_center_scan_fab',
         onPressed: () => _openQRScanner(
           title: 'Scan Exam Bundle',
           subtitle: 'Point the camera at the bundle manifest QR code.',
@@ -444,50 +461,56 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
             dutyId: widget.duty.dutyId,
             bundleId: value,
           ),
-          successMessage: 'Bundle verified and logged successfully.',
+          successMessage: 'Bundle scanned successfully.',
         ),
         backgroundColor: const Color(0xFF4560BD),
         shape: const CircleBorder(),
-        child: const Icon(Icons.qr_code_scanner_rounded, size: 30),
+        elevation: 6,
+        child: const Icon(
+          Icons.qr_code_scanner_rounded,
+          color: Colors.white,
+          size: 32,
+        ),
       ),
-      bottomNavigationBar: const _DashboardBottomNav(),
+      bottomNavigationBar: const DashboardBottomNav(),
       body: SafeArea(
         child: FutureBuilder<FacultyDashboardActivity>(
           future: _dashboardFuture,
           builder: (context, snapshot) {
-            final pendingSosCount = snapshot.data?.pendingSosCount ?? 0;
+            final activities = snapshot.data?.activities ?? const [];
+            final logs = snapshot.data?.washroomLogs ?? const <WashroomLog>[];
             final registeredCount = snapshot.data?.registeredCount ?? 0;
             final maxCapacity = snapshot.data?.maxCapacity ?? 0;
-            final logs = snapshot.data?.washroomLogs ?? const <WashroomLog>[];
-            final activities =
-                snapshot.data?.activities ?? const <FacultyActivity>[];
+            final pendingSosCount = snapshot.data?.pendingSosCount ?? 0;
 
             return Stack(
               children: [
                 RefreshIndicator(
                   onRefresh: _refresh,
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(24, 22, 24, 120),
+                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 120),
                     children: [
                       ValueListenableBuilder<DateTime>(
                         valueListenable: _nowNotifier,
                         builder: (context, now, child) {
                           final countdown = _countdown(now);
                           return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _DashboardTopBar(
-                                title: '${widget.duty.courseCode} | ${widget.duty.room}',
+                              DashboardTopBar(
+                                title:
+                                    '${widget.duty.courseCode} | ${widget.duty.room}',
                                 subtitle: _sessionStatus(now),
                               ),
                               const SizedBox(height: 22),
-                              _DashboardHeader(duty: widget.duty, countdown: countdown),
+                              DashboardHeader(
+                                  duty: widget.duty, countdown: countdown),
                             ],
                           );
                         },
                       ),
                       const SizedBox(height: 32),
-                      const _SectionHeading(
+                      const SectionHeading(
                         icon: Icons.qr_code_2_rounded,
                         title: 'QUICK SCANS',
                       ),
@@ -495,28 +518,31 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _ActionTile(
+                            child: ActionTile(
                               icon: Icons.inventory_2_rounded,
                               title: 'Scan Materials',
                               onTap: () => _openQRScanner(
                                 title: 'Scan Exam Bundle',
-                                subtitle: 'Point the camera at the bundle manifest QR code.',
+                                subtitle:
+                                    'Point the camera at the bundle manifest QR code.',
                                 onSubmit: (value) => widget.api.scanBundle(
                                   dutyId: widget.duty.dutyId,
                                   bundleId: value,
                                 ),
-                                successMessage: 'Bundle verified and logged successfully.',
+                                successMessage:
+                                    'Bundle scanned successfully.',
                               ),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _ActionTile(
+                            child: ActionTile(
                               icon: Icons.person_search_rounded,
                               title: 'Scan Students',
                               onTap: () => _openQRScanner(
                                 title: 'Scan Student ID',
-                                subtitle: 'Verify identity and mark attendance via student ID.',
+                                subtitle:
+                                    'Verify identity and mark attendance via student ID.',
                                 onSubmit: (value) => widget.api.markAttendance(
                                   dutyId: widget.duty.dutyId,
                                   studentIdentifier: value,
@@ -528,12 +554,12 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                         ],
                       ),
                       const SizedBox(height: 32),
-                      const _SectionHeading(
+                      const SectionHeading(
                         icon: Icons.inventory_outlined,
                         title: 'LOGISTICS & SUPPLIES',
                       ),
                       const SizedBox(height: 18),
-                      _WideActionTile(
+                      WideActionTile(
                         icon: Icons.shopping_cart_checkout_rounded,
                         title: 'Request Supplies',
                         subtitle: 'Sheets, threads, stationery',
@@ -555,25 +581,26 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                        const SizedBox(height: 14),
-                        _WideActionTile(
-                          icon: Icons.assignment_rounded,
-                          title: 'Post-Exam Report',
-                          subtitle:
-                              'Attendance summary, sheet count, incidents and remarks',
-                          iconBackground: const Color(0xFFEAF0FF),
-                          iconColor: const Color(0xFF4560BD),
-                          onTap: () => _openPostExamReport(
-                            registeredCount: registeredCount,
-                            maxCapacity: maxCapacity,
-                          ),
-                        ),
+                              const SizedBox(height: 14),
+                              WideActionTile(
+                                icon: Icons.assignment_rounded,
+                                title: 'Submit Post-Exam Report',
+                                subtitle: 'Reconcile answer sheets & incidents',
+                                badgeText: 'Pending',
+                                badgeColor: const Color(0xFF35C759),
+                                iconBackground: const Color(0xFFE4F9ED),
+                                iconColor: const Color(0xFF26B757),
+                                onTap: () => _openPostExamReport(
+                                  registeredCount: registeredCount,
+                                  maxCapacity: maxCapacity,
+                                ),
+                              ),
                             ],
                           );
                         },
                       ),
                       const SizedBox(height: 32),
-                      _SectionHeaderRow(
+                      SectionHeaderRow(
                         title: 'WASHROOM BREAKS',
                         icon: Icons.people_alt_outlined,
                         actionLabel: '+ New Break',
@@ -598,7 +625,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                           child: Center(child: CircularProgressIndicator()),
                         )
                       else if (logs.isEmpty)
-                        const _EmptyBody(
+                        const EmptyBody(
                           text: 'No students are currently out of the room.',
                         )
                       else
@@ -626,32 +653,33 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                                     .toString()
                                     .padLeft(2, '0');
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: _WashroomBreakCard(
-                              studentId: log.studentId,
-                              subtitle: exceeded
-                                  ? 'Overtime detected!'
-                                  : 'Started ${_durationText(Duration(seconds: seconds)).substring(3)} ago',
-                              timerText: '${exceeded ? '-' : ''}$mm:$ss',
-                              timerLabel: exceeded ? 'EXCEEDED' : 'REMAINING',
-                              color: color,
-                              alert: exceeded,
-                              onStop: () => _runAction(
-                                () => widget.api.endWashroomTimer(
-                                  dutyId: widget.duty.dutyId,
-                                  studentId: log.studentId,
-                                ),
-                                'Washroom timer ended.',
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 32),
-                      const _SectionHeading(
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: WashroomBreakCard(
+                                    studentId: log.studentId,
+                                    subtitle: exceeded
+                                        ? 'Overtime detected!'
+                                        : 'Started ${_durationText(Duration(seconds: seconds)).substring(3)} ago',
+                                    timerText: '${exceeded ? '-' : ''}$mm:$ss',
+                                    timerLabel:
+                                        exceeded ? 'EXCEEDED' : 'REMAINING',
+                                    color: color,
+                                    alert: exceeded,
+                                    onStop: () => _runAction(
+                                      () => widget.api.endWashroomTimer(
+                                        dutyId: widget.duty.dutyId,
+                                        studentId: log.studentId,
+                                      ),
+                                      'Washroom timer ended.',
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                      const SizedBox(height: 32),
+                      const SectionHeading(
                         icon: Icons.history_rounded,
                         title: 'RECENT ACTIVITY',
                       ),
@@ -659,9 +687,10 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                       ValueListenableBuilder<DateTime>(
                         valueListenable: _nowNotifier,
                         builder: (context, now, child) {
-                          return _ActivityPanel(
-                              activities: activities,
-                              ago: (time) => _ago(time, now));
+                          return ActivityPanel(
+                            activities: activities,
+                            ago: (time) => _ago(time, now),
+                          );
                         },
                       ),
                     ],
@@ -671,6 +700,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                   right: 24,
                   bottom: 110,
                   child: FloatingActionButton(
+                    heroTag: 'dashboard_emergency_sos_fab',
                     onPressed: _openSOSSheet,
                     backgroundColor: const Color(0xFFE92822),
                     elevation: 6,
@@ -684,664 +714,6 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardTopBar extends StatelessWidget {
-  const _DashboardTopBar({
-    required this.title,
-    required this.subtitle,
-  });
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F3FC),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const Icon(Icons.school_rounded,
-              color: Color(0xFF4560BD), size: 30),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Color(0xFF111B3A),
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: Color(0xFF6F7F99),
-                  fontSize: 14,
-                  letterSpacing: 1.1,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const Icon(Icons.notifications_rounded,
-            color: Color(0xFF111B3A), size: 28),
-        const SizedBox(width: 14),
-        Container(
-          width: 52,
-          height: 52,
-          decoration: const BoxDecoration(
-            color: Color(0xFF4560BD),
-            shape: BoxShape.circle,
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'JS',
-            style: TextStyle(
-                color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader({
-    required this.duty,
-    required this.countdown,
-  });
-
-  final FacultyDuty duty;
-  final ({String label, String value, String helper}) countdown;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
-      decoration: BoxDecoration(
-        color: const Color(0xFF4A61BC),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  countdown.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  countdown.value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.timer_outlined, color: Color(0x85FFFFFF), size: 66),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimeRange {
-  const _TimeRange(this.start, this.end);
-  final DateTime start;
-  final DateTime end;
-}
-
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({
-    required this.icon,
-    required this.title,
-  });
-
-  final IconData icon;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF7A88A1), size: 22),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF6F7F99),
-            fontSize: 16,
-            letterSpacing: 2,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionHeaderRow extends StatelessWidget {
-  const _SectionHeaderRow({
-    required this.title,
-    required this.icon,
-    required this.actionLabel,
-    required this.onTap,
-  });
-
-  final String title;
-  final IconData icon;
-  final String actionLabel;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF7A88A1), size: 22),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF6F7F99),
-            fontSize: 16,
-            letterSpacing: 2,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const Spacer(),
-        InkWell(
-          onTap: onTap,
-          child: Text(
-            actionLabel,
-            style: const TextStyle(
-              color: Color(0xFF4560BD),
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Ink(
-        height: 172,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFD7E1F1)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 74,
-              height: 74,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF0F3FC),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: const Color(0xFF4560BD), size: 34),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFF111B3A),
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WideActionTile extends StatelessWidget {
-  const _WideActionTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.badgeText,
-    this.badgeColor,
-    this.iconBackground = const Color(0xFFEAF0FF),
-    this.iconColor = const Color(0xFF3157C8),
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final String? badgeText;
-  final Color? badgeColor;
-  final Color iconBackground;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Ink(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFD7E1F1)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 62,
-              height: 62,
-              decoration: BoxDecoration(
-                color: iconBackground,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: iconColor, size: 34),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Color(0xFF111B3A),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF6B7C97),
-                      fontSize: 15,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (badgeText != null) ...[
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: badgeColor ?? const Color(0xFF4560BD),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  badgeText!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-            ],
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF9AA7BD)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WashroomBreakCard extends StatelessWidget {
-  const _WashroomBreakCard({
-    required this.studentId,
-    required this.subtitle,
-    required this.timerText,
-    required this.timerLabel,
-    required this.color,
-    required this.alert,
-    required this.onStop,
-  });
-
-  final String studentId;
-  final String subtitle;
-  final String timerText;
-  final String timerLabel;
-  final Color color;
-  final bool alert;
-  final VoidCallback onStop;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: alert ? const Color(0xFFFFF4F4) : Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: alert ? const Color(0xFFFFB8B5) : const Color(0xFFD7E1F1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: alert ? const Color(0xFFFFE3E2) : const Color(0xFFDDF7E9),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              alert
-                  ? Icons.warning_amber_rounded
-                  : Icons.directions_run_rounded,
-              color: color,
-              size: 32,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Student ID: $studentId',
-                  style: const TextStyle(
-                    color: Color(0xFF111B3A),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            children: [
-              Text(
-                timerText,
-                style: TextStyle(
-                    color: color, fontSize: 18, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                timerLabel,
-                style: TextStyle(
-                  color: color.withValues(alpha: 0.82),
-                  fontSize: 12,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 14),
-          InkWell(
-            onTap: onStop,
-            borderRadius: BorderRadius.circular(16),
-            child: Ink(
-              width: 56,
-              height: 70,
-              decoration: BoxDecoration(
-                color:
-                    alert ? const Color(0xFFFF453A) : const Color(0xFFF1F5FB),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                Icons.close_rounded,
-                color: alert ? Colors.white : const Color(0xFF596A86),
-                size: 32,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActivityPanel extends StatelessWidget {
-  const _ActivityPanel({
-    required this.activities,
-    required this.ago,
-  });
-
-  final List<FacultyActivity> activities;
-  final String Function(DateTime time) ago;
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleActivities = activities.take(3).toList();
-    if (visibleActivities.isEmpty) {
-      return const _EmptyBody(
-          text: 'Recent actions will appear here automatically.');
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFD7E1F1)),
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < visibleActivities.length; i++) ...[
-            if (i > 0) const Divider(height: 1, color: Color(0xFFEEF2F9)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F3FC),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Icon(Icons.check_circle_rounded,
-                        color: Color(0xFF8A99B4), size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      visibleActivities[i].message,
-                      style: const TextStyle(
-                        color: Color(0xFF111B3A),
-                        fontSize: 16,
-                        height: 1.4,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    ago(visibleActivities[i].createdAt),
-                    style: const TextStyle(
-                      color: Color(0xFF8E9CB4),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SOSOptionTile extends StatelessWidget {
-  const _SOSOptionTile({
-    required this.title,
-    required this.onTap,
-    this.isUrgent = false,
-  });
-
-  final String title;
-  final VoidCallback onTap;
-  final bool isUrgent;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      tileColor: isUrgent ? const Color(0xFFFFF3F2) : const Color(0xFFF6F8FD),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      leading: Icon(
-        isUrgent
-            ? Icons.warning_amber_rounded
-            : Icons.circle_notifications_rounded,
-        color: isUrgent ? const Color(0xFFE92822) : const Color(0xFF4560BD),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isUrgent ? const Color(0xFFE92822) : const Color(0xFF111B3A),
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right_rounded),
-    );
-  }
-}
-
-class _DashboardBottomNav extends StatelessWidget {
-  const _DashboardBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return const BottomAppBar(
-      height: 82,
-      color: Colors.white,
-      surfaceTintColor: Colors.white,
-      notchMargin: 8,
-      padding: EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavItem(
-              icon: Icons.dashboard_rounded,
-              label: 'Dashboard',
-              selected: true),
-          _NavItem(icon: Icons.people_alt_outlined, label: 'Roster'),
-          SizedBox(width: 54),
-          _NavItem(icon: Icons.error_outline_rounded, label: 'Incidents'),
-          _NavItem(icon: Icons.settings_rounded, label: 'Settings'),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    this.selected = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? const Color(0xFF4560BD) : const Color(0xFF98A7BF);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 29),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-              color: color, fontSize: 12, fontWeight: FontWeight.w800),
-        ),
-      ],
-    );
-  }
-}
-
-class _EmptyBody extends StatelessWidget {
-  const _EmptyBody({
-    required this.text,
-  });
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF7F8CA3),
-            fontSize: 14,
-            height: 1.5,
-            fontWeight: FontWeight.w500,
-          ),
         ),
       ),
     );

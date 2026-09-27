@@ -138,7 +138,7 @@ class _FacultySettingsScreenState extends State<FacultySettingsScreen> {
                   title: const Text('Push Notifications', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Alerts for swaps and emergencies'),
                   value: _notificationsEnabled,
-                  activeColor: const Color(0xFF3157C8),
+                  activeThumbColor: const Color(0xFF3157C8),
                   onChanged: (val) {
                     setState(() {
                       _notificationsEnabled = val;

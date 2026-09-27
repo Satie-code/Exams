@@ -112,6 +112,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Submit & Generate Report'),
+      300.0,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Submit & Generate Report'));
     await tester.pumpAndSettle();
 
@@ -120,6 +125,10 @@ void main() {
   });
 
   testWidgets('renders structured report layout', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     final api = _ReportApiFake();
 
     await tester.pumpWidget(
